@@ -2,10 +2,55 @@
 
 import sys
 import re
-import collections
 
-Value = collections.namedtuple('Value', ['kind', 'indirect', 'value', 'plus'])
-Instruction = collections.namedtuple('Instruction', ['opcode', 'num_values'])
+class ParseItem:
+    def is_value():
+        return False
+    def is_instruction():
+        return False
+    def is_label():
+        return False
+    def output(labels):
+        return []
+
+class Value(ParseItem):
+    def __init__(self, kind, indirect, value, plus=None):
+        self.kind = kind
+        self.value = value
+        self.indirect = indirect
+        self.plus = plus
+    def is_value():
+        return True
+    def __str__(self):
+        s = ['['] if self.indirect else []
+        s.append(str(self.value))
+        if self.plus: s.extend(['+', self.plus])
+        if self.indirect: s.append(']')
+        return ''.join(s)
+    def __repr__(self):
+        return "Value(%s, %s, %s, %s)" % (
+            repr(self.kind), repr(self.indirect), repr(self.value), repr(self.plus))
+
+class Label(ParseItem):
+    def __init__(self, label):
+        self.label = label
+    def is_label():
+        return True
+    def __str__(self):
+        return ':' + self.label
+    def __repr__(self):
+        return 'Label(%s)' % repr(self.label)
+
+class Instruction(ParseItem):
+    def __init__(self, opcode, num_values):
+        self.opcode = opcode
+        self.num_values = num_values
+    def is_instruction():
+        return True
+    def __str__(self):
+        return self.opcode
+    def __repr__(self):
+        return 'Instruction(%s, %d)' % (repr(self.opcode), self.num_values)
 
 class ParseError(Exception):
     def __init__(self, value):
@@ -13,13 +58,12 @@ class ParseError(Exception):
     def __str__(self):
         return repr(self.value)
 
-
 def read_label(token):
     ''' parse out a :label '''
     assert(token)
     if len(token) <= 1 or token[0] != ':':
         raise ParseError('Label must be of format :label, not ' + token)
-    return token[1:]
+    return Label(token[1:])
 
 literalRe = re.compile(r'^\d+$')
 literalRe16 = re.compile(r'^0x[0-9a-fA-F]{1,4}$')
@@ -38,9 +82,9 @@ def read_value(token):
 
     # Values that cannot have a register offset
     if token in commands:
-        return Value('Command', indirect, token, None)
+        return Value('Command', indirect, token)
     if len(token) == 1 and token in registers:
-        return Value('Register', indirect, token, None)
+        return Value('Register', indirect, token)
 
     # Does it have a register offset?
     plus = None
@@ -101,15 +145,18 @@ def parse(inf):
         for item in parse_line(line):
             yield item
 
+def assemble(items):
+    for x in items:
+        print x
+
 def main(args):
     if args:
         fname = args[0]
         with open(fname, 'r') as inf:
-            for x in parse(inf):
-                print x
+            assemble(parse(inf))
     else:
-        for x in parse(sys.stdin):
-            print x
+        assemble(parse(sys.stdin))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+    #pass
