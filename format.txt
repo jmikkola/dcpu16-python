@@ -1,0 +1,34 @@
+
+BNF for DCPU-16 assembly:
+
+Program: Line '\n' | ''
+Line: Label | Instruction | Comment | ''
+Label: ':' r'\w+' LabelRest
+LabelRest: Instruction | Comment | ''
+Instruction: BasicInstruction InstructionRest | 'JSR' Value | InstructionRest
+BasicInstruction: BasicOpcde Value Value
+BasicOpcode:   'SET' | 'ADD' | 'MUL' | 'DIV' | 'MOD' | 'SHL' | 'SHR' | 'AND' | 'BOR' 
+			 | 'XOR' | 'IFE' | 'IFN' | 'IFG' | 'IFB'
+Value: Register | Command | Literal | '[' Reference
+Command: 'POP' | 'PEEK' | 'PUSH'
+Register: 'A' | 'B' | 'C' | 'X' | 'Y' | 'Z' | 'I' | 'J'
+Literal: r'0x[0-9a-fA-F]{1,4}'
+Reference: Literal ']' | Register ']'
+InstructionRest: Comment | ''
+Comment: ';' r'.*'
+
+Program = (Line '\n')*
+Line = ((Label)? (Instruction)? (Comment)?)
+Program = (((Label)? (Instruction)? (Comment)?) '\n')*
+Label = ':\w+'
+Program = (((':\w+')? (Instruction)? (Comment)?) '\n')*
+Comment: ';.*'
+Program = (((':\w+')? (Instruction)? (';.*')?) '\n')*
+Instruction = (BasicInstruction Value Value) | ('JSR' Value)
+			= ((BasicInstruction Value) | 'JSR') Value
+Value = (Register) | (Command) | (Literal) | '[' (Register | Literal) ']'
+Register = '[ABCXYZIJ]'
+Literal: r'0x[0-9a-fA-F]{1,4}'
+
+
+
