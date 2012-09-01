@@ -4,7 +4,7 @@ import sys
 import re
 import collections
 
-Value = collections.namedtuple('Value', ['kind', 'indirect', 'value'])
+Value = collections.namedtuple('Value', ['kind', 'indirect', 'value', 'plus'])
 Instruction = collections.namedtuple('Instruction', ['opcode', 'num_values'])
 
 class ParseError(Exception):
@@ -21,27 +21,49 @@ def read_label(token):
         raise ParseError('Label must be of format :label, not ' + token)
     return token[1:]
 
-literalRe = re.compile(r'0x[0-9a-fA-F]{1,4}')
+literalRe = re.compile(r'^\d+$')
+literalRe16 = re.compile(r'^0x[0-9a-fA-F]{1,4}$')
+labelRe = re.compile(r'^\w+$')
+commands = {'POP', 'PEEK', 'PUSH', 'SP', 'PC', 'O'}
+registers = 'ABCXYZIJ'
 def read_value(token):
     ''' parse a value '''
     assert(token)
-    if token in {'POP', 'PEEK', 'PUSH'}:
-        return Value('Command', False, token)
+
+    # Is access indirect?
     indirect = False
     if token[0] == '[' and token[-1] == ']':
         token = token[1:-1]
         indirect = True
-    if len(token) == 1 and token in 'ABCXYZIJ':
-        return Value('Register', indirect, token)
-    elif literalRe.match(token):
-        return Value('Literal', indirect, int(token, 16))
+
+    # Values that cannot have a register offset
+    if token in commands:
+        return Value('Command', indirect, token, None)
+    if len(token) == 1 and token in registers:
+        return Value('Register', indirect, token, None)
+
+    # Does it have a register offset?
+    plus = None
+    if indirect and (len(token) > 1 and token[-2] == '+'):
+        plus = token[-1]
+        if plus not in registers:
+            raise ParseError('Bad register offset: ' + plus)
+        token = token[:-2]
+
+    # Values that can have a register offset
+    if literalRe.match(token):
+        return Value('Literal', indirect, int(token), plus)
+    if literalRe16.match(token):
+        return Value('Literal', indirect, int(token, 16), plus)
+    if labelRe.match(token):
+        return Value('label', indirect, token, plus)
     raise ParseError('Expected a value, found ' + token)
 
 def strip_comment(line):
     index = line.find(';')
     return line[:index] if index >= 0 else line
 
-basicOpcodes = set('SET ADD MUL DIV MOD SHL SHR AND BOR XOR IFE IFN IFG IFB'.split())
+basicOpcodes = set('SET ADD SUB MUL DIV MOD SHL SHR AND BOR XOR IFE IFN IFG IFB'.split())
 def read_instruction(token):
     assert(token)
     if token == 'JSR':
@@ -63,16 +85,15 @@ def parse_line(line):
             state = 5 - instruction.num_values
             yield instruction
         elif state in [3,4]:
+            if state == 3:
+                if token[-1] == ',': token = token[:-1]
+                else: raise ParseError("Expected value to end with a ',': " + token)
             state += 1
             yield read_value(token)
         else:
             raise ParseError('Did not expect %s in state %d' % (token, state))
     if state not in [1,2,5]:
         raise ParseError('Line ended before parse finished. Final state: %d' % state)
-
-def echo_line(line):
-    for item in parse_line(line):
-        print item
 
 def parse(inf):
     ''' A simple line-based parser '''
@@ -91,5 +112,4 @@ def main(args):
             print x
 
 if __name__ == '__main__':
-    pass
-    #main(sys.argv[1:])
+    main(sys.argv[1:])
