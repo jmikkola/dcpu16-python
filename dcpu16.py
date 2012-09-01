@@ -24,18 +24,16 @@ literalRe = re.compile(r'0x[0-9a-fA-F]{1,4}')
 def read_value(token):
     ''' parse a value '''
     assert(token)
-    if len(token) == 1 and token in 'ABCXYZIJ':
-        return Value('Register', False, token)
-    elif token in {'POP', 'PEEK', 'PUSH'}:
+    if token in {'POP', 'PEEK', 'PUSH'}:
         return Value('Command', False, token)
+    indirect = False
+    if token[0] == '[' and token[-1] == ']':
+        token = token[1:-1]
+        indirect = True
+    if len(token) == 1 and token in 'ABCXYZIJ':
+        return Value('Register', indirect, token)
     elif literalRe.match(token):
-        return Value('Literal', False, int(token, 16))
-    elif token[0] == '[' and token[-1] == ']':
-        inner = token[1:-1]
-        if len(inner) == 1 and inner in 'ABCXYZIJ':
-            return Value('Register', True, inner)
-        elif literalRe.match(inner):
-            return Value('Literal', True, int(inner, 16))
+        return Value('Literal', indirect, int(token, 16))
     raise ParseError('Expected a value, found ' + token)
 
 def read_instruction(line):
