@@ -17,6 +17,14 @@ class Label(ParseItem):
     def is_label(self):
         return True
 
+    @classmethod
+    def parse(cls, token):
+        ''' parse out a :label '''
+        assert(token)
+        if len(token) <= 1 or token[0] != ':':
+            raise ParseError('Label must be of format :label, not ' + token)
+        return cls(token[1:])
+
     def __str__(self):
         return ':' + self.label
 
@@ -171,13 +179,6 @@ class ParseError(Exception):
     def __str__(self):
         return repr(self.value)
 
-def read_label(token):
-    ''' parse out a :label '''
-    assert(token)
-    if len(token) <= 1 or token[0] != ':':
-        raise ParseError('Label must be of format :label, not ' + token)
-    return Label(token[1:])
-
 
 def strip_comment(line):
     index = line.find(';')
@@ -186,8 +187,7 @@ def strip_comment(line):
 def parse_line(line):
     tokens = strip_comment(line).strip().split()
     while tokens and tokens[0][0] == ':':
-        # TODO: convert to Label.parse
-        yield read_label(tokens[0])
+        yield Label.parse(tokens[0])
         tokens = tokens[1:]
     if tokens:
         yield Instruction.parse(tokens)
