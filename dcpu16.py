@@ -102,9 +102,9 @@ class Value:
         raise ParseError('Expected a value, found ' + token)
 
 
-    def __init__(self, value, hasNextWord = False, nextWord=None, label=None):
+    def __init__(self, value, hasNextWord=False, nextWord=None, label=None):
         self.value = value
-        self.nextWord = nextWord
+        self.nextWord = nextWord if nextWord else 0
         self.hasNextWord = hasNextWord
         self.label = label
 
@@ -123,7 +123,7 @@ class Instruction(ParseItem):
         'SET': 0x01, 'ADD': 0x02, 'SUB': 0x03, 'MUL': 0x04, 'DIV': 0x05, 'MOD': 0x06,
         'SHL': 0x07, 'SHR': 0x08, 'AND': 0x09, 'BOR': 0x0A, 'XOR': 0x0B, 'IFE': 0x0C,
         'IFN': 0x0D, 'IFG': 0x0E, 'IFB': 0x0F, 'JSR': 0x10
-    }
+        }
 
     @classmethod
     def parse(cls, tokens):
@@ -163,14 +163,16 @@ class Instruction(ParseItem):
         return 'Instruction(%s, %d)' % (repr(self.opcode), self.num_values)
 
     def output(self):
-        out = [self.opcode]
+        # Output instruction's word
+        instruction = self.opcode
         for v in self.values:
-            out.append(v.value)
+            pass
+        # TODO: insert values into instruction
+        yield (instruction, None)
+        # Output next words
         for v in self.values:
             if v.hasNextWord:
-                out.append(v.nextWord)
-        return out
-
+                yield (v.nextWord, v.label)
 
 class ParseError(Exception):
     def __init__(self, value):
@@ -189,6 +191,7 @@ def parse_line(line):
     while tokens and tokens[0][0] == ':':
         yield Label.parse(tokens[0])
         tokens = tokens[1:]
+    # TODO: allow parsing a hex literal
     if tokens:
         yield Instruction.parse(tokens)
 
@@ -206,8 +209,10 @@ def assemble(items):
     wordPosition = 0
     for x in items:
         if x.is_instruction():
-            data.extend(x.output())
-            # TODO: note locations of labels
+            for (value, label) in x.output():
+                data.append(value)
+                if label:
+                    updateLocations[len(data) - 1] = label
         else:
             label = x.label
             if label in labels:
@@ -218,16 +223,22 @@ def assemble(items):
         if label not in labels:
             raise ParseError("could not find label: " + label)
         labelLocation = labels[label]
-        date[labelLocation] = location
+        data[location] = labelLocation
     return data
+
+def run(inf):
+    data = assemble(parse(inf))
+    for word in data:
+        print('%x' % word)
+
 
 def main(args):
     if args:
         fname = args[0]
         with open(fname, 'r') as inf:
-            print assemble(parse(inf))
+            run(inf)
     else:
-        print assemble(parse(sys.stdin))
+        run(sys.stdin)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
