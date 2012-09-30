@@ -113,7 +113,7 @@ class Value:
         return repr(self)
 
     def __repr__(self):
-        return "Value(%s, %s)" % (repr(self.value), repr(self.nextValue))
+        return "Value(%s, %s)" % (repr(self.value), repr(self.nextWord))
 
     def requires_lookup(self):
         return self.hasNextWord and self.label is not None
@@ -141,8 +141,8 @@ class Instruction(ParseItem):
         if len(values) == 1:
             instruction.values.append(Value.parse(values[0]))
         else:
-            if values[0][:-1] != ',':
-                raise ParseError('Expected a comma after first value ' + str(values[0])
+            if values[0][-1] != ',':
+                raise ParseError('Expected a comma after first value ' + str(values[0]))
             instruction.values.append(Value.parse(values[0][:-1]))
             instruction.values.append(Value.parse(values[1]))
         return instruction
@@ -165,10 +165,12 @@ class Instruction(ParseItem):
 
     def output(self):
         # Output instruction's word
-        instruction = self.opcode
-        for v in self.values:
-            pass
-        # TODO: insert values into instruction
+        offsets = [10, 4, 0]
+        opcode = self.opcode
+        parts = [opcode] + [v.value for v in self.values]
+        instruction = 0
+        for (part, offset) in zip(parts[::-1], offsets):
+            instruction += part << offset
         yield (instruction, None)
         # Output next words
         for v in self.values:
@@ -230,7 +232,7 @@ def assemble(items):
 def run(inf):
     data = assemble(parse(inf))
     for word in data:
-        print('%x' % word)
+        print('%04x' % word)
 
 
 def main(args):
