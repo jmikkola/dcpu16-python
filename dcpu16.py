@@ -123,7 +123,7 @@ class Instruction(ParseItem):
         'SET': 0x01, 'ADD': 0x02, 'SUB': 0x03, 'MUL': 0x04, 'DIV': 0x05, 'MOD': 0x06,
         'SHL': 0x07, 'SHR': 0x08, 'AND': 0x09, 'BOR': 0x0A, 'XOR': 0x0B, 'IFE': 0x0C,
         'IFN': 0x0D, 'IFG': 0x0E, 'IFB': 0x0F, 'JSR': 0x10
-        }
+    }
 
     @classmethod
     def parse(cls, tokens):
@@ -141,7 +141,8 @@ class Instruction(ParseItem):
         if len(values) == 1:
             instruction.values.append(Value.parse(values[0]))
         else:
-            # TODO: check for comma
+            if values[0][:-1] != ',':
+                raise ParseError('Expected a comma after first value ' + str(values[0])
             instruction.values.append(Value.parse(values[0][:-1]))
             instruction.values.append(Value.parse(values[1]))
         return instruction
@@ -242,3 +243,7 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+
+# To add:
+# - Binary output to file or pipe (unless flag is set)
+# - grouped hex output to console
