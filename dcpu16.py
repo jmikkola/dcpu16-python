@@ -61,7 +61,7 @@ class Value:
         if len(token) == 1 and token in cls.registers:
             r = cls.registers[token]
             if indirect: r += 8
-            return cls(r, indirect)
+            return cls(r)
 
         # Does it have a register offset?
         offset = None
@@ -122,7 +122,7 @@ class Instruction(ParseItem):
     values = {
         'SET': 0x01, 'ADD': 0x02, 'SUB': 0x03, 'MUL': 0x04, 'DIV': 0x05, 'MOD': 0x06,
         'SHL': 0x07, 'SHR': 0x08, 'AND': 0x09, 'BOR': 0x0A, 'XOR': 0x0B, 'IFE': 0x0C,
-        'IFN': 0x0D, 'IFG': 0x0E, 'IFB': 0x0F, 'JSR': 0x10
+        'IFN': 0x0D, 'IFG': 0x0E, 'IFB': 0x0F, 'JSR': 0x01
     }
 
     @classmethod
@@ -130,10 +130,10 @@ class Instruction(ParseItem):
         if not (2 <= len(tokens) <= 3):
             raise ParseError('Expected 2 or 3 part instruction: ' + str(tokens))
 
-        opcode = tokens[0]
-        if opcode not in cls.values:
-            raise ParseError('Invalid opcode: ' + opcode)
-        instruction = cls(cls.values[opcode])
+        name = tokens[0]
+        if name not in cls.values:
+            raise ParseError('Invalid opcode: ' + name)
+        instruction = cls(name)
 
         values = tokens[1:]
         if len(values) != instruction.num_values():
@@ -147,21 +147,24 @@ class Instruction(ParseItem):
             instruction.values.append(Value.parse(values[1]))
         return instruction
 
-    def __init__(self, opcode):
-        self.opcode = opcode
+    def __init__(self, name):
+        self.name = name
+        self.opcode = self.values[name]
         self.values = []
 
     def is_instruction(self):
         return True
 
     def num_values(self):
-        return 2 if (self.opcode != 0x10) else 1
+        if self.name in {'JSR'}:
+            return 1
+        return 2
 
     def __str__(self):
         return self.opcode
 
     def __repr__(self):
-        return 'Instruction(%s, %d)' % (repr(self.opcode), self.num_values)
+        return 'Instruction(%s, %d)' % (repr(self.opcode), self.num_values())
 
     def output(self):
         # Output instruction's word
